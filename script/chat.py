@@ -5,8 +5,8 @@ load_dotenv()
 
 rag = Rag()
 
-prompt = "Quels sont les événements à propos de l'architecture ?"
+prompt = "A quelle date peut-on voir Dany-Io le sculpteur de pierre ?"
 
-answer = rag.answer(prompt)
+answer, documents = rag.answer(prompt)
 
-print(answer.content)
+print(answer.content[0]['text'])

@@ -1,6 +1,7 @@
 import pandas as pd
 from datasets import Dataset
-from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+
 from script.rag import EventsRag as Rag
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -102,8 +103,12 @@ for question in questions:
 
 
 # Initialisation et wrapping des modèles Langchain pour Ragas
-llm_model = ChatMistralAI()
-embedding_model = MistralAIEmbeddings()
+llm_model = GoogleGenerativeAI(
+    model="gemini-3.5-flash-lite",
+)
+embedding_model = GoogleGenerativeAIEmbeddings(
+    model="gemini-embedding-001",
+)
 
 ragas_llm = LangchainLLMWrapper(llm_model)
 ragas_embeddings = LangchainEmbeddingsWrapper(embedding_model)

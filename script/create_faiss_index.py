@@ -4,8 +4,8 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_mistralai import MistralAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import script.utils as utils
 import script.downloader as downloader
@@ -86,10 +86,9 @@ def create_faiss_index():
 
     chunked_documents = text_splitter.split_documents(documents)
 
-    print("Connexion à l'API Mistral...")
-    embeddings = MistralAIEmbeddings(
-        model="mistral-embed",
-        max_retries=5,
+    print("Connexion à l'API Google Generative AI...")
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001",
     )
 
     batch_size = 500

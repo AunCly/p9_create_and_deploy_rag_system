@@ -1,11 +1,14 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
+from langchain_community.llms.anthropic import Anthropic
 from langchain_community.vectorstores import FAISS
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
-from mistralai.client import Mistral
 import warnings
+
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, GoogleGenerativeAI
+
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community")
 
 load_dotenv()
@@ -25,9 +28,8 @@ def load_faiss():
 
     vectorstore = FAISS.load_local(
         folder_path=str(base_path / "data" / "raw" / "faiss_langchain_index"),
-        embeddings=MistralAIEmbeddings(
-            model="mistral-embed",
-            max_retries=5,
+        embeddings=GoogleGenerativeAIEmbeddings(
+            model="gemini-embedding-001",
         ),
         allow_dangerous_deserialization=True
     )
@@ -70,20 +72,23 @@ def construct_prompt(prompt, retrieved_docs):
 class EventsRag:
 
     def __init__(self):
-        self.client = Mistral()
-        self.model = ChatMistralAI()
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            model="gemini-embedding-001",
+        )
+        self.model = init_chat_model(
+    "google_genai:gemini-3.5-flash-lite",
+            max_retries=10,
+            timeout=120,
+        )
         self.vectorstore = load_faiss()
 
     def search_documents(self, prompt, k=5):
         docs_and_scores = self.vectorstore.similarity_search_with_score(prompt, k=k)
         return docs_and_scores
 
-    def embed_text(self, text, model="mistral-embed"):
-        embeddings_batch_response = self.client.embeddings.create(
-            model=model,
-            inputs=[text],
-        )
-        return embeddings_batch_response.data[0].embedding
+    def embed_text(self, text):
+        embedding = self.embeddings.embed_query(text)
+        return embedding
 
     def answer(self, prompt):
         documents = self.search_documents(prompt)
