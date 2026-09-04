@@ -30,46 +30,42 @@ rag = Rag()
 @experiment()
 def evaluate_rag(row, rag, llm, embeddings):
 
-    # Query the RAG system
-    rag_response = rag.query(row["question"], top_k=5)
-    model_response = rag_response.get("answer", "")
-
     # Evaluate Faithfulness
     faithfullness_scorer = Faithfulness(llm=llm)
     faithfullness_result = faithfullness_scorer.score(
-        user_input=row['question'],
-        response=row['answer'],
+        user_input=row['user_input'],
+        response=row['response'],
         retrieved_contexts=row["retrieved_contexts"],
     )
 
     # Evaluate Answer Relevancy
     answer_relevancy_scorer = AnswerRelevancy(llm=llm, embeddings=embeddings)
     answer_relevancy_result = answer_relevancy_scorer.score(
-        user_input=row['question'],
-        response=row['answer'],
+        user_input=row['user_input'],
+        response=row['response'],
         retrieved_contexts=row["retrieved_contexts"],
     )
 
     # Evaluate Context Precision
     context_precision_scorer = ContextPrecision(llm=llm, embeddings=embeddings)
     context_precision_result = context_precision_scorer.score(
-        user_input=row['question'],
-        response=row['answer'],
+        user_input=row['user_input'],
+        response=row['response'],
         retrieved_contexts=row["retrieved_contexts"],
     )
 
     # Evaluate Context Recall
     context_recall_scorer = ContextRecall(llm=llm, embeddings=embeddings)
     context_recall_result = context_recall_scorer.score(
-        user_input=row['question'],
-        response=row['answer'],
+        user_input=row['user_input'],
+        response=row['response'],
         retrieved_contexts=row["retrieved_contexts"],
     )
 
     # Return evaluation results
     result = {
         **row,
-        "model_response": model_response,
+        "model_response": row['response'],
         "faithfullness_score": faithfullness_result.value,
         "faithfullness_reason": faithfullness_result.reason,
         "answer_relevancy_score": answer_relevancy_result.value,
@@ -80,7 +76,7 @@ def evaluate_rag(row, rag, llm, embeddings):
         "context_recall_reason": context_recall_result.reason,
         "retrieved_documents": [
             doc.get("content", "")[:200] + "..." if len(doc.get("content", "")) > 200 else doc.get("content", "")
-            for doc in rag_response.get("retrieved_documents", [])
+            for doc in row.get("retrieved_contexts", [])
         ]
     }
 
