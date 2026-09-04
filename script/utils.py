@@ -48,7 +48,6 @@ def format_dates(timings):
     Returns:
         str: A formatted string representing the event dates.
     """
-    print(f"Timings : {timings}")
 
     if not timings:
         return ""
@@ -59,7 +58,6 @@ def format_dates(timings):
         formatted_dates = "Dates d'ouverture : "
 
     for timing in timings:
-        print(timing)
         start_date = datetime.fromisoformat(timing.get('begin', ''))
         end_date = datetime.fromisoformat(timing.get('end', ''))
 
@@ -69,7 +67,6 @@ def format_dates(timings):
             date = f"Du {start_date.date()} {start_date.hour}H{start_date.minute:02d} au {end_date.date()} {end_date.hour}H{end_date.minute:02d}"
         formatted_dates += date + "; "
 
-    print(f"Formatted dates: {formatted_dates}")
     return formatted_dates
 
 def format_registration(registrations):
@@ -89,8 +86,6 @@ def format_registration(registrations):
 
     if not registrations.strip():
         return ""
-
-    print(f"Registration : {registrations}")
 
     try:
         registrations_data = json.loads(registrations)
