@@ -16,4 +16,9 @@ dependencies = [
     "mistralai>=2.9.4",
     "pandas>=3.0.5",
     "python-dotenv>=1.2.3",
+    "fastapi[standard]>=0.138.1",
+    "requests>=2.34.2",
+    "datasets>=5.0.1",
+    "ragas>=0.4.3",
+    "langchain-google-vertexai>=3.2.4",
 ]

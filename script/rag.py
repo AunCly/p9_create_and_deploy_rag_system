@@ -36,7 +36,13 @@ def load_faiss():
 
 
 def construct_prompt(prompt, retrieved_docs):
-    system_prompt = ("Vous êtes un assistant qui répond aux questions sur les événements culturels en Nouvelle-Aquitaine. ")
+    system_prompt = ("Vous êtes un assistant qui répond aux questions sur les événements culturels en Nouvelle-Aquitaine."
+                     "Les réponses doivent être coutes, concises, précises et basées sur les documents fournis."
+                     "Le ton doit être amical et engageant, et les réponses doivent être en français."
+                     "Ne faites pas de suppositions et ne fournissez pas d'informations qui ne sont pas présentes dans les documents."
+                     "Si la question ne concerne pas les événements passés ou a venir en 2026 à La Rochelle, répondez que vous ne pouvez pas répondre à cette question."
+                     "Si les questions portent sur d'autres années, répondez que vous ne pouvez pas répondre à cette question."
+                     "Si les questions portent sur d'autres ville que La Rochelle, répondez que vous ne pouvez pas répondre à cette question.")
 
     if not retrieved_docs:
         system_prompt += "Aucun document pertinent n'a été trouvé pour répondre à la question."
@@ -83,7 +89,7 @@ class EventsRag:
         documents = self.search_documents(prompt)
         message = construct_prompt(prompt, documents)
         response = self.model.invoke(message)
-        return response
+        return response, documents
 
 
 
