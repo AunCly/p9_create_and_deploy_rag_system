@@ -1,13 +1,16 @@
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
+import script.utils as utils
 import warnings
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community")
+load_dotenv()
 
-import script.embedding as embedding
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community")
 
 base_path = Path(os.path.dirname(__file__)).parent
 vectorstore = FAISS.load_local(
@@ -26,7 +29,7 @@ print(f"Is trained: {vectorstore.index.is_trained}")
 
 query = "Evénement a propos de l'architecture"
 
-query_embed = embedding.embed_text(query)
+query_embed = utils.embed_text(query)
 
 docs_and_scores = vectorstore.similarity_search_with_score(query, k=5)
 

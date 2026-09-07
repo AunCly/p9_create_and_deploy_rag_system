@@ -5,6 +5,8 @@ import html
 
 import numpy as np
 import pandas as pd
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 
 def clean_html(text):
     """
@@ -102,3 +104,10 @@ def format_registration(registrations):
 
     return formatted_registrations.strip()
 
+def embed_text(text):
+
+    client = GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001",
+    )
+
+    return client.embed_query(text)
