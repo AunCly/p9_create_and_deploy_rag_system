@@ -24,91 +24,30 @@ ground_truths = [
     # 'Je ne peux pas répondre à cette question car je ne connais que les évènements à venir à La Rochelle.',
 ]
 
-# Initialisation du RAG
+# 1. Initialisation du RAG
 rag = Rag()
 
-@experiment()
-def evaluate_rag(row, rag, llm, embeddings):
-
-    # Evaluate Faithfulness
-    faithfullness_scorer = Faithfulness(llm=llm)
-    faithfullness_result = faithfullness_scorer.score(
-        user_input=row['user_input'],
-        response=row['response'],
-        retrieved_contexts=row["retrieved_contexts"],
-    )
-
-    # Evaluate Answer Relevancy
-    answer_relevancy_scorer = AnswerRelevancy(llm=llm, embeddings=embeddings)
-    answer_relevancy_result = answer_relevancy_scorer.score(
-        user_input=row['user_input'],
-        response=row['response'],
-        retrieved_contexts=row["retrieved_contexts"],
-    )
-
-    # Evaluate Context Precision
-    context_precision_scorer = ContextPrecision(llm=llm, embeddings=embeddings)
-    context_precision_result = context_precision_scorer.score(
-        user_input=row['user_input'],
-        response=row['response'],
-        retrieved_contexts=row["retrieved_contexts"],
-    )
-
-    # Evaluate Context Recall
-    context_recall_scorer = ContextRecall(llm=llm, embeddings=embeddings)
-    context_recall_result = context_recall_scorer.score(
-        user_input=row['user_input'],
-        response=row['response'],
-        retrieved_contexts=row["retrieved_contexts"],
-    )
-
-    # Return evaluation results
-    result = {
-        **row,
-        "model_response": row['response'],
-        "faithfullness_score": faithfullness_result.value,
-        "faithfullness_reason": faithfullness_result.reason,
-        "answer_relevancy_score": answer_relevancy_result.value,
-        "answer_relevancy_reason": answer_relevancy_result.reason,
-        "context_precision_score": context_precision_result.value,
-        "context_precision_reason": context_precision_result.reason,
-        "context_recall_score": context_recall_result.value,
-        "context_recall_reason": context_recall_result.reason,
-        "retrieved_documents": [
-            doc.get("content", "")[:200] + "..." if len(doc.get("content", "")) > 200 else doc.get("content", "")
-            for doc in row.get("retrieved_contexts", [])
-        ]
-    }
-
-    return result
-
-# 2. Préparation des données (inchangée)
 answers = []
 placeholder_contexts = []
 
+# 2. Préparation des données (Extraction robuste des chaînes de texte)
 for question in questions:
     answer, documents = rag.answer(question)
-    answers.append(answer.content)
+    answers.append(answer.content if hasattr(answer, 'content') else str(answer))
 
-    if documents and hasattr(documents[0], 'page_content'):
-        text_contexts = [doc.page_content for doc in documents]
-    else:
-        text_contexts = documents
+    # Extraction propre pour obtenir une liste de STRINGS (évite l'erreur PyArrow)
+    text_contexts = []
+    for doc in documents:
+        if hasattr(doc, 'page_content'):
+            text_contexts.append(doc.page_content)
+        elif isinstance(doc, dict):
+            text_contexts.append(doc.get('page_content') or doc.get('content', str(doc)))
+        else:
+            text_contexts.append(str(doc))
 
     placeholder_contexts.append(text_contexts)
 
-
-# Initialisation et wrapping des modèles Langchain pour Ragas
-llm_model = GoogleGenerativeAI(
-    model="gemini-3.5-flash-lite",
-)
-embedding_model = GoogleGenerativeAIEmbeddings(
-    model="gemini-embedding-001",
-)
-
-ragas_llm = LangchainLLMWrapper(llm_model)
-ragas_embeddings = LangchainEmbeddingsWrapper(embedding_model)
-
+# Dataset formaté avec la nomenclature Ragas 0.2.x
 evaluation_data = {
     "user_input": questions,
     "response": answers,
@@ -118,13 +57,76 @@ evaluation_data = {
 
 evaluation_dataset = Dataset.from_dict(evaluation_data)
 
+# 3. Initialisation des modèles Langchain
+llm_model = GoogleGenerativeAI(
+    model="gemini-3.5-flash-lite",  # Attention au nom du modèle
+)
+embedding_model = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+)
+
+ragas_llm = LangchainLLMWrapper(llm_model)
+ragas_embeddings = LangchainEmbeddingsWrapper(embedding_model)
+
+
+# 4. Fonction d'évaluation avec le décorateur @experiment
+@experiment()
+async def evaluate_rag(row, llm, embeddings):
+    # Nous utilisons directement les données de 'row' préparées en amont.
+    # Plus besoin de faire 'rag.query()' ici !
+
+    # Ragas 0.2.x préfère parfois recevoir un dictionnaire ou un objet SingleTurnSample.
+    # Nous préparons le dictionnaire exact attendu par les métriques.
+    sample = {
+        "user_input": row["user_input"],
+        "response": row["response"],
+        "retrieved_contexts": row["retrieved_contexts"],
+        "reference": row["reference"]
+    }
+
+    # Evaluate Faithfulness
+    faithfullness_scorer = Faithfulness(llm=llm)
+    faithfullness_result = faithfullness_scorer.score(sample)
+
+    # Evaluate Answer Relevancy
+    answer_relevancy_scorer = AnswerRelevancy(llm=llm, embeddings=embeddings)
+    answer_relevancy_result = answer_relevancy_scorer.score(sample)
+
+    # Evaluate Context Precision (Nécessite impérativement 'reference')
+    context_precision_scorer = ContextPrecision(llm=llm, embeddings=embeddings)
+    context_precision_result = context_precision_scorer.score(sample)
+
+    # Evaluate Context Recall (Nécessite impérativement 'reference')
+    context_recall_scorer = ContextRecall(llm=llm, embeddings=embeddings)
+    context_recall_result = context_recall_scorer.score(sample)
+
+    # On extrait les valeurs et raisons de manière sécurisée
+    # (Selon la version exacte, score() retourne un objet avec .value/.reason ou directement la valeur)
+    return {
+        **row,
+        "faithfullness_score": getattr(faithfullness_result, 'value', faithfullness_result),
+        "faithfullness_reason": getattr(faithfullness_result, 'reason', None),
+        "answer_relevancy_score": getattr(answer_relevancy_result, 'value', answer_relevancy_result),
+        "answer_relevancy_reason": getattr(answer_relevancy_result, 'reason', None),
+        "context_precision_score": getattr(context_precision_result, 'value', context_precision_result),
+        "context_precision_reason": getattr(context_precision_result, 'reason', None),
+        "context_recall_score": getattr(context_recall_result, 'value', context_recall_result),
+        "context_recall_reason": getattr(context_recall_result, 'reason', None),
+    }
+
+
+# 5. Exécution de l'évaluation
 for row in evaluation_dataset:
-    result = evaluate_rag(row, rag=rag, llm=ragas_llm, embeddings=ragas_embeddings)
+    result = evaluate_rag(row, llm=ragas_llm, embeddings=ragas_embeddings)
     print(f"Question: {result['user_input']}")
-    print(f"Réponse du modèle: {result['model_response']}")
-    print(f"Score de fidélité: {result['faithfullness_score']}, Raison: {result['faithfullness_reason']}")
-    print(f"Score de pertinence de la réponse: {result['answer_relevancy_score']}, Raison: {result['answer_relevancy_reason']}")
-    print(f"Score de précision du contexte: {result['context_precision_score']}, Raison: {result['context_precision_reason']}")
-    print(f"Score de rappel du contexte: {result['context_recall_score']}, Raison: {result['context_recall_reason']}")
-    print(f"Documents récupérés (extraits): {[doc[:100] + '...' if len(doc) > 100 else doc for doc in result['retrieved_documents']]}")
-    print('------------------')
+    print(f"Réponse du modèle: {result['response']}")
+    print(f"Score de fidélité: {result['faithfullness_score']}")
+    print(f"Raison (fidélité): {result['faithfullness_reason']}")
+    print(f"Score de pertinence: {result['answer_relevancy_score']}")
+    print(f"Score de précision du contexte: {result['context_precision_score']}")
+    print(f"Score de rappel du contexte: {result['context_recall_score']}")
+
+    # Raccourcir le contexte pour l'affichage console
+    contexts_preview = [doc[:100] + '...' if len(doc) > 100 else doc for doc in result['retrieved_contexts']]
+    print(f"Documents récupérés (extraits): {contexts_preview}")
+    print('-' * 40)
