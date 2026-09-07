@@ -10,4 +10,4 @@ Votre mission est de livrer un POC (Proof of Concept) complet, avec une API expl
 Ce POC devra démontrer la faisabilité technique, la pertinence métier et la performance du système.
 
 ## Documentation 
-Voir le fichier : [DOCUMENTATION.md.py](DOCUMENTATION.md.py)
+Voir le fichier : [DOCUMENTATION.md](DOCUMENTATION.md)
