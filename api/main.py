@@ -65,11 +65,18 @@ def ask_endpoint(prompt: PromptModel):
     tmp = prompt.model_dump()
 
     rag = Rag()
-    response = rag.answer(tmp.get("prompt"))
+    response, documents = rag.answer(tmp.get("prompt"))
+
+    clean_documents = []
+    for doc in documents:
+        # On extrait de manière sécurisée le contenu texte (évite l'erreur numpy)
+        content = doc.page_content if hasattr(doc, 'page_content') else str(doc)
+        clean_documents.append({"page_content": content})
 
     return {
-        "query": prompt,
+        "query": tmp.get("prompt"),
         "answer": response.content,
+        "documents": clean_documents
     }
 
 @app.post(

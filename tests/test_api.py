@@ -33,24 +33,24 @@ class TestApi:
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
-    def test_ask_question(self, get_random_prompt):
-        response = client.post("/ask", json={"question": get_random_prompt}, headers={"x-api-key": os.getenv('API_KEY')})
+    def test_ask(self, get_random_prompt):
+        response = client.post("/ask", json={"prompt": get_random_prompt}, headers={"x-api-key": os.getenv('API_AUTH')})
 
-        response_keys_needed = {"answer"}
+        response_keys_needed = { "query", "answer", "documents" }
 
         assert response.status_code == 200
         assert response_keys_needed <= response.json().keys()
         assert response_keys_needed == response.json().keys()
 
-    def test_predict_with_missing_fields(self):
+    def test_ask_with_missing_prompt(self):
 
-        response = client.post("/ask", headers={"x-api-key": os.getenv('API_KEY')})
+        response = client.post("/ask", headers={"x-api-key": os.getenv('API_AUTH')})
 
         assert response.status_code == 422
 
 
     def test_rebuild(self):
-        response = client.post("/rebuild", headers={"x-api-key": os.getenv('API_KEY')})
+        response = client.post("/rebuild", headers={"x-api-key": os.getenv('API_AUTH')})
 
         assert response.status_code == 200
-        assert response.json() == {"message": "Index reconstruit avec succès."}
+        assert response.json() == {"message": "Index FAISS reconstruit avec succès !"}

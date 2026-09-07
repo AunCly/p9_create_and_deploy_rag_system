@@ -9,3 +9,5 @@ en s'appuyant sur un système RAG (Retrieval-Augmented Generation) combinant rec
 Votre mission est de livrer un POC (Proof of Concept) complet, avec une API exploitable par les équipes produit et marketing. 
 Ce POC devra démontrer la faisabilité technique, la pertinence métier et la performance du système.
 
+## Documentation 
+Voir le fichier : [DOCUMENTATION.md.py](DOCUMENTATION.md.py)
