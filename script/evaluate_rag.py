@@ -1,10 +1,14 @@
+import asyncio
+
 import pandas as pd
+import google.generativeai as genai
+
 from datasets import Dataset
 from langchain_google_genai import GoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 from script.rag import EventsRag as Rag
-from ragas.llms import LangchainLLMWrapper
-from ragas.embeddings import LangchainEmbeddingsWrapper
+from ragas.llms import LangchainLLMWrapper, llm_factory
+from ragas.embeddings import LangchainEmbeddingsWrapper, embedding_factory
 from ragas.metrics.collections import Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall
 from ragas.experiment import experiment
 
@@ -58,15 +62,15 @@ evaluation_data = {
 evaluation_dataset = Dataset.from_dict(evaluation_data)
 
 # 3. Initialisation des modèles Langchain
-llm_model = GoogleGenerativeAI(
-    model="gemini-3.5-flash-lite",  # Attention au nom du modèle
+client = genai.GenerativeModel("gemini-3.5-flash-lite")
+ragas_llm = llm_factory(
+    client=client,
+    provider="google",
+    model="gemini-3.5-flash-lite"
 )
-embedding_model = GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001",
+ragas_embeddings = embedding_factory(
+    model="models/embedding-001"
 )
-
-ragas_llm = LangchainLLMWrapper(llm_model)
-ragas_embeddings = LangchainEmbeddingsWrapper(embedding_model)
 
 
 # 4. Fonction d'évaluation avec le décorateur @experiment
@@ -116,17 +120,25 @@ async def evaluate_rag(row, llm, embeddings):
 
 
 # 5. Exécution de l'évaluation
-for row in evaluation_dataset:
-    result = evaluate_rag(row, llm=ragas_llm, embeddings=ragas_embeddings)
-    print(f"Question: {result['user_input']}")
-    print(f"Réponse du modèle: {result['response']}")
-    print(f"Score de fidélité: {result['faithfullness_score']}")
-    print(f"Raison (fidélité): {result['faithfullness_reason']}")
-    print(f"Score de pertinence: {result['answer_relevancy_score']}")
-    print(f"Score de précision du contexte: {result['context_precision_score']}")
-    print(f"Score de rappel du contexte: {result['context_recall_score']}")
+async def main():
+    for row in evaluation_dataset:
+        # Il faut ajouter 'await' devant l'appel de la fonction
+        result = await evaluate_rag(row, llm=ragas_llm, embeddings=ragas_embeddings)
 
-    # Raccourcir le contexte pour l'affichage console
-    contexts_preview = [doc[:100] + '...' if len(doc) > 100 else doc for doc in result['retrieved_contexts']]
-    print(f"Documents récupérés (extraits): {contexts_preview}")
-    print('-' * 40)
+        print(f"Question: {result['user_input']}")
+        print(f"Réponse du modèle: {result['response']}")
+        print(f"Score de fidélité: {result['faithfullness_score']}")
+        print(f"Raison (fidélité): {result['faithfullness_reason']}")
+        print(f"Score de pertinence: {result['answer_relevancy_score']}")
+        print(f"Score de précision du contexte: {result['context_precision_score']}")
+        print(f"Score de rappel du contexte: {result['context_recall_score']}")
+
+        # Raccourcir le contexte pour l'affichage console
+        contexts_preview = [doc[:100] + '...' if len(doc) > 100 else doc for doc in result['retrieved_contexts']]
+        print(f"Documents récupérés (extraits): {contexts_preview}")
+        print('-' * 40)
+
+
+# Lancer la boucle asynchrone principale
+if __name__ == "__main__":
+    asyncio.run(main())
